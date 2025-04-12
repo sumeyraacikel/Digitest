@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import Header from '../components/Header';
 import NavBar from '../components/Navbar';
 import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 
-const products = [
-  { id: 'STK-007', name: 'BEYAZ KOT KUMAŞI', quantity: '10 METRE' },
-  { id: 'STK-004', name: 'Ariston Çift Kapılı No Frost Buzdolabı', quantity: '5 ADET' },
-  { id: 'TP-1082', name: '2 NO ŞEFFAF BADYA', quantity: '4 ADET' },
-  { id: 'TP-1091', name: '1 NO RENKLİ BADYA', quantity: '5 ADET' },
-];
-
 const InventoryCountSheet = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://192.168.1.101:5000/api/StockFiches')
+      .then(response => response.json())
+      .then(data => {
+        const flatProducts = data.flatMap(fiche =>
+          fiche.detaylar.map(detay => ({
+            id: fiche.fisNo,
+            name: detay.parcaAdi,
+            quantity: `${detay.miktar} ADET`
+          }))
+        );
+        setProducts(flatProducts);
+      })
+      .catch(error => {
+        console.error('API error:', error);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -25,9 +39,13 @@ const InventoryCountSheet = () => {
       <NavBar />
       <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <ScrollView>
-        {filteredProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+        {loading ? (
+          <ActivityIndicator size="large" color="#000" />
+        ) : (
+          filteredProducts.map((product, index) => (
+            <ProductCard key={index} product={product} />
+          ))
+        )}
       </ScrollView>
     </View>
   );
